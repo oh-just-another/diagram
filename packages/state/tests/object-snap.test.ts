@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  composeAxisDeltas,
   gapIntervals,
   snapMoveDeltaToObjects,
   snapResizeDeltaToObjects,
+  snappedAxes,
 } from "../src/editor/applies/object-snap.js";
 
 const b = (x: number, y: number, width: number, height: number) => ({ x, y, width, height });
@@ -129,5 +131,21 @@ describe("gapIntervals", () => {
     ]);
     expect(gapIntervals(0, 100, 20, 60)).toEqual([]);
     expect(gapIntervals(0, 40, 0, 40)).toEqual([]);
+  });
+});
+
+describe("snappedAxes / composeAxisDeltas", () => {
+  it("reads the corrected axes off the guides", () => {
+    expect(snappedAxes([])).toEqual({ x: false, y: false });
+    const r = snapMoveDeltaToObjects(b(0, 0, 50, 50), { x: 103, y: 0 }, [b(50, 200, 50, 50)], 6);
+    expect(snappedAxes(r.guides)).toEqual({ x: true, y: false });
+  });
+
+  it("takes the object delta on covered axes and the grid delta elsewhere", () => {
+    const object = { x: 100, y: 13 };
+    const grid = { x: 105, y: 10 };
+    expect(composeAxisDeltas(object, { x: true, y: false }, grid)).toEqual({ x: 100, y: 10 });
+    expect(composeAxisDeltas(object, { x: false, y: true }, grid)).toEqual({ x: 105, y: 13 });
+    expect(composeAxisDeltas(object, { x: true, y: true }, grid)).toEqual(object);
   });
 });

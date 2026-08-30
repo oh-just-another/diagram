@@ -136,6 +136,26 @@ const guideFor = (
 
 const shifted = (b: Bounds, d: Vec2): Bounds => ({ ...b, x: b.x + d.x, y: b.y + d.y });
 
+/**
+ * Which axes an object snap actually corrected, read off its guides (a
+ * guide is emitted exactly for a corrected axis). Callers compose the
+ * uncovered axes with grid snapping — object snapping lands per axis, so
+ * a single alignment must not disable the grid on the free one.
+ */
+export const snappedAxes = (
+  guides: readonly SnapGuide[],
+): { readonly x: boolean; readonly y: boolean } => ({
+  x: guides.some((g) => g.axis === "x"),
+  y: guides.some((g) => g.axis === "y"),
+});
+
+/** Per-axis pick: `object` where `covered`, `grid` elsewhere. */
+export const composeAxisDeltas = (
+  object: Vec2,
+  covered: { readonly x: boolean; readonly y: boolean },
+  grid: Vec2,
+): Vec2 => ({ x: covered.x ? object.x : grid.x, y: covered.y ? object.y : grid.y });
+
 export interface MoveSnapOptions {
   /**
    * Offer the moved shape's centre lines (default `true`). A multi-shape

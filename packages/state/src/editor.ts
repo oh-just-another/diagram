@@ -412,6 +412,8 @@ import {
 } from "./editor/applies/snap-grid.js";
 import {
   snapMoveDeltaToObjects,
+  snappedAxes,
+  composeAxisDeltas,
   snapResizeDeltaToObjects,
   type SizeMatch,
   type SnapGuide,
@@ -5114,8 +5116,9 @@ export class Editor {
 
   /**
    * Move-delta snapping: object snapping (edges / centres of nearby shapes)
-   * wins when it lands; otherwise grid snapping. Records the guides for the
-   * overlay either way.
+   * wins on the axes it lands on, the grid keeps the rest — a shape aligned
+   * to a neighbour on x still snaps to the grid vertically. Records the
+   * guides for the overlay either way.
    */
   private snapMoveDeltaFor(moving: ReadonlySet<ElementId>, bounds: Bounds, delta: Vec2): Vec2 {
     this.interaction.snapGuides = [];
@@ -5124,7 +5127,9 @@ export class Editor {
       const r = snapMoveDeltaToObjects(bounds, delta, this.snapCandidates(moving), threshold);
       if (r.guides.length > 0) {
         this.interaction.snapGuides = r.guides;
-        return r.delta;
+        if (!this.snapActive()) return r.delta;
+        const grid = snapMoveDelta(bounds, delta, this.snapSpacing());
+        return composeAxisDeltas(r.delta, snappedAxes(r.guides), grid);
       }
     }
     return this.snapActive() ? snapMoveDelta(bounds, delta, this.snapSpacing()) : delta;
@@ -5160,7 +5165,9 @@ export class Editor {
         );
         if (r.guides.length > 0) {
           this.interaction.snapGuides = r.guides;
-          return r.delta;
+          if (!this.snapActive()) return r.delta;
+          const grid = snapGroupDelta(origins, delta, this.snapSpacing());
+          return composeAxisDeltas(r.delta, snappedAxes(r.guides), grid);
         }
       }
     }
@@ -5192,7 +5199,16 @@ export class Editor {
       if (r.guides.length > 0 || r.sizeMatch !== null) {
         this.interaction.snapGuides = r.guides;
         this.interaction.sizeMatch = r.sizeMatch;
-        return r.delta;
+        if (!this.snapActive()) return r.delta;
+        // A size match owns the axis it sized, on top of the guide axes.
+        const axes = snappedAxes(r.guides);
+        const match = r.sizeMatch?.axis;
+        const covered = {
+          x: axes.x || match === "width" || match === "both",
+          y: axes.y || match === "height" || match === "both",
+        };
+        const grid = snapResizeDelta(original, handle, delta, this.snapSpacing());
+        return composeAxisDeltas(r.delta, covered, grid);
       }
     }
     return this.snapActive() ? snapResizeDelta(original, handle, delta, this.snapSpacing()) : delta;
