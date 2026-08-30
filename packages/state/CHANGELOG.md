@@ -1,5 +1,14 @@
 # @oh-just-another/state
 
+## 0.67.4
+
+### Patch Changes
+
+- Updated dependencies [20fc326]
+  - @oh-just-another/scene@0.63.2
+  - @oh-just-another/history@0.57.8
+  - @oh-just-another/renderer-core@0.62.2
+
 ## 0.67.3
 
 ### Patch Changes

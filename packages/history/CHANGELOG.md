@@ -1,5 +1,12 @@
 # @oh-just-another/history
 
+## 0.57.8
+
+### Patch Changes
+
+- Updated dependencies [20fc326]
+  - @oh-just-another/scene@0.63.2
+
 ## 0.57.7
 
 ### Patch Changes

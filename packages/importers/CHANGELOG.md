@@ -1,5 +1,14 @@
 # @oh-just-another/importers
 
+## 0.61.4
+
+### Patch Changes
+
+- Updated dependencies [20fc326]
+  - @oh-just-another/scene@0.63.2
+  - @oh-just-another/serialization@0.61.3
+  - @oh-just-another/state@0.67.4
+
 ## 0.61.3
 
 ### Patch Changes
