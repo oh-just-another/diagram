@@ -1,5 +1,11 @@
 # @oh-just-another/state
 
+## 0.68.0
+
+### Minor Changes
+
+- c199ecc: View toggles for links and comment pins: `Editor.showConnectors` / `setShowConnectors` / `toggleConnectors` and `showComments` / `setShowComments` / `toggleComments` (editor state — not persisted, not exported). Hidden links and pins are neither painted nor hit-testable, and their selection is dropped. Actions `toggle-connectors` / `toggle-comments`; the main menu's View section gains "Flow connectors" and "Comments" switches.
+
 ## 0.67.4
 
 ### Patch Changes

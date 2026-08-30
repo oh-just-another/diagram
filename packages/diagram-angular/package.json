@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/diagram-angular",
-  "version": "0.3.13",
+  "version": "0.3.14",
   "description": "Angular wrapper for the diagram editor — a thin standalone component over the <oja-diagram> custom element.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
