@@ -1,5 +1,17 @@
 # @oh-just-another/docs
 
+## 0.0.18
+
+### Patch Changes
+
+- Updated dependencies [c199ecc]
+  - @oh-just-another/editor@0.66.0
+  - @oh-just-another/importers@0.61.5
+  - @oh-just-another/react-ui@0.64.5
+  - @oh-just-another/diagram@0.3.13
+  - @oh-just-another/diagram-svelte@0.3.14
+  - @oh-just-another/diagram-vue@0.3.14
+
 ## 0.0.17
 
 ### Patch Changes

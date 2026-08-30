@@ -1,5 +1,18 @@
 # @oh-just-another/editor
 
+## 0.66.0
+
+### Minor Changes
+
+- c199ecc: View toggles for links and comment pins: `Editor.showConnectors` / `setShowConnectors` / `toggleConnectors` and `showComments` / `setShowComments` / `toggleComments` (editor state — not persisted, not exported). Hidden links and pins are neither painted nor hit-testable, and their selection is dropped. Actions `toggle-connectors` / `toggle-comments`; the main menu's View section gains "Flow connectors" and "Comments" switches.
+
+### Patch Changes
+
+- Updated dependencies [c199ecc]
+  - @oh-just-another/state@0.68.0
+  - @oh-just-another/importers@0.61.5
+  - @oh-just-another/react-ui@0.64.5
+
 ## 0.65.4
 
 ### Patch Changes
