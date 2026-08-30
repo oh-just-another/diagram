@@ -7,7 +7,7 @@
 import { DEFAULT_CANVAS_BACKGROUND } from "@oh-just-another/scene";
 
 /**
- * Canvas paper presets behind the main menu's Board › Background color
+ * Canvas paper presets behind the main menu's Board › Background colour
  * rows. The default paper is listed so the user can return to it; picking
  * it clears `viewport.background`. Colours are plain CSS hex.
  */
@@ -24,7 +24,7 @@ export const CANVAS_BACKGROUND_PRESETS: readonly {
   { id: "light-blue", label: "Light blue", color: "#e3f0fb" },
 ];
 
-/** Side of the colour swatch drawn in a Background color menu row, px. */
+/** Side of the colour swatch drawn in a Background colour menu row, px. */
 export const CANVAS_BACKGROUND_SWATCH_PX = 14;
 
 /**

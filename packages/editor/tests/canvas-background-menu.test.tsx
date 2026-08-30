@@ -1,5 +1,5 @@
 /**
- * Board › Background color: the rows set the scene's paper colour, the
+ * Board › Background colour: the rows set the scene's paper colour, the
  * default row clears it, and the root's `--du-canvas-bg` follows the scene.
  */
 import { afterEach, describe, expect, it } from "vitest";
@@ -23,7 +23,7 @@ const click = (label: string): void => {
   });
 };
 
-describe("<Editor> — Board › Background color", () => {
+describe("<Editor> — Board › Background colour", () => {
   it("lists every preset, applies a colour to the scene and the root, and the default clears it", async () => {
     const ref = createRef<EditorAPI>();
     const { container } = render(<Editor ref={ref} capabilities={FORCE} />);
@@ -36,7 +36,7 @@ describe("<Editor> — Board › Background color", () => {
       screen.getByRole("button", { name: "Main menu" }).click();
     });
     click("Board");
-    click("Background color");
+    click("Background colour");
     for (const preset of CANVAS_BACKGROUND_PRESETS)
       expect(screen.getByText(preset.label)).toBeTruthy();
     click("Black");
@@ -48,7 +48,7 @@ describe("<Editor> — Board › Background color", () => {
       screen.getByRole("button", { name: "Main menu" }).click();
     });
     click("Board");
-    click("Background color");
+    click("Background colour");
     click("Light gray");
     expect(ed.scene.viewport.background).toBeUndefined();
     await waitFor(() => {
