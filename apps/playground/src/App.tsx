@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type Scene, type BinaryFile } from "@oh-just-another/scene";
+import { referencedFileIds, type Scene, type BinaryFile } from "@oh-just-another/scene";
 import { type FileId } from "@oh-just-another/types";
 import { createSceneAutosave } from "./autosave";
 import { parseScene, parseFiles, stringifyScene } from "@oh-just-another/serialization";
@@ -133,7 +133,22 @@ const restoreScene = async (): Promise<Scene | undefined> => {
   } catch (err) {
     console.warn("[diagram] could not load stored files", err);
   }
-  return files.size > 0 ? { ...parsed, files } : parsed;
+  if (files.size === 0) return parsed;
+  // Only the bytes the scene still points at come back: a store written by
+  // an older build (before deletions dropped their files) would otherwise
+  // resurrect orphans into `scene.files` on every load, and they would be
+  // re-saved forever. Drop them from the store in the same pass.
+  const used = referencedFileIds(parsed);
+  const kept = new Map<FileId, BinaryFile>();
+  for (const [id, file] of files) {
+    if (used.has(id)) kept.set(id, file);
+  }
+  if (kept.size !== files.size) {
+    void pruneFilesExcept(new Set([...kept.keys()])).catch(() => {
+      /* best-effort cleanup */
+    });
+  }
+  return kept.size > 0 ? { ...parsed, files: kept } : parsed;
 };
 
 const readRoomFromHash = (): string | null => {
@@ -242,19 +257,32 @@ export const App = () => {
   // go to IndexedDB. Safe to call from both
   // the debounce timer and an unload flush.
   const writeScene = useCallback((s: Scene) => {
-    void saveSceneJson(stringifyScene(s)).catch((err: unknown) => {
-      console.warn("[diagram] could not persist scene", err);
-    });
-    if (s.files === lastFilesRef.current) return;
+    const filesChanged = s.files !== lastFilesRef.current;
     lastFilesRef.current = s.files;
-    // Fire-and-forget — the bytes are already in memory, so a write that
-    // lands a tick later still survives the next reload.
-    void saveFiles(s.files).catch((err: unknown) => {
-      console.warn("[diagram] could not persist files", err);
-    });
-    void pruneFilesExcept(new Set(s.files.keys())).catch(() => {
-      /* best-effort cleanup */
-    });
+    const writeJson = (): Promise<void> =>
+      saveSceneJson(stringifyScene(s)).catch((err: unknown) => {
+        console.warn("[diagram] could not persist scene", err);
+      });
+    if (!filesChanged) {
+      void writeJson();
+      return;
+    }
+    // Order matters for a reload that lands mid-save: bytes first, then the
+    // JSON that references them, and only then drop what the new scene no
+    // longer references. The reverse order can leave a stored scene
+    // pointing at bytes that were already deleted.
+    void saveFiles(s.files)
+      .catch((err: unknown) => {
+        console.warn("[diagram] could not persist files", err);
+        // Let the next autosave retry instead of skipping the write
+        // forever because the ref already claims these bytes are stored.
+        lastFilesRef.current = null;
+      })
+      .then(writeJson)
+      .then(() => pruneFilesExcept(new Set(s.files.keys())))
+      .catch(() => {
+        /* best-effort cleanup */
+      });
   }, []);
   // Debounced autosave controller. `flush()` is wired to tab-hide /
   // unload below so an edit made in the last `AUTOSAVE_DEBOUNCE_MS`

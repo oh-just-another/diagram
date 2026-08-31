@@ -39,6 +39,7 @@ import {
   isSticky,
   isEmoji,
   getBinaryFile,
+  type BinaryFile,
   paragraphAt,
   paragraphCount,
   paragraphRangeForOffsets,
@@ -242,6 +243,7 @@ import {
 } from "./editor/public/laser.js";
 import {
   copySelected as copySelectedPure,
+  copiedFiles,
   pasteFromClipboard,
   selectionFromPasted,
 } from "./editor/public/clipboard.js";
@@ -3316,11 +3318,17 @@ export class Editor {
    * `navigator.clipboard` (out of scope for the editor).
    */
   private clipboard: Element[] = [];
+  /**
+   * Binary entries the clipboard shapes reference. Held so a CUT image
+   * still pastes: deleting the original drops its bytes from the document.
+   */
+  private clipboardFiles: ReadonlyMap<FileId, BinaryFile> = new Map();
 
   copySelected(): void {
     const out = copySelectedPure(this._scene, this._selection);
     if (out.length === 0) return;
     this.clipboard = [...out];
+    this.clipboardFiles = copiedFiles(this._scene, this.clipboard);
     this.announce(`Copied ${out.length} shapes`);
   }
 
@@ -3354,6 +3362,7 @@ export class Editor {
       this.clipboard,
       target ?? null,
       () => ++this.nextId,
+      this.clipboardFiles,
     );
     this._scene = result.scene;
     this._selection = selectionFromPasted(result.newIds);

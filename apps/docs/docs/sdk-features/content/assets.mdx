@@ -17,7 +17,14 @@ const next = addBinaryFile(scene, file);
 const resolved = getBinaryFile(next, id);
 ```
 
-Use `removeBinaryFile` to drop an entry. On a live editor, `editor.addBinaryFile(blob, name?)` reads a `Blob` and registers it in one async call, returning the new `FileId`. When you drop or paste an image into the editor, the built-in image handler stores the bytes via this registry and inserts an `ImageElement` for you (see External Content).
+An entry lives exactly as long as the shapes that reference it: deleting (or
+erasing / cutting) the last shape pointing at a file removes its `files` entry
+in the same undoable step, so a host store that mirrors `scene.files` does not
+grow with every removed image. Undo restores the entry with the shape, and a
+cut image keeps its bytes on the clipboard so the paste is intact. Prune your
+own store with `referencedFileIds(scene)` / `unreferencedFileIds(scene)`.
+
+Use `removeBinaryFile` to drop an entry manually. On a live editor, `editor.addBinaryFile(blob, name?)` reads a `Blob` and registers it in one async call, returning the new `FileId`. When you drop or paste an image into the editor, the built-in image handler stores the bytes via this registry and inserts an `ImageElement` for you (see External Content).
 
 The serializer writes `files` to a separate sidecar (`serializeFiles` / `stringifyFiles` / `parseFiles` in `@oh-just-another/serialization`, base64-encoded `data`) so the text scene JSON stays small; on import the host re-attaches the sidecar and shapes resolve their `fileId` lookups again.
 

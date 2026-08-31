@@ -1,4 +1,4 @@
-import type { Bounds, LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
+import type { Bounds, FileId, LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { bounds as B } from "@oh-just-another/math";
 import type { Link } from "../edges/edge.js";
 import type { Layer } from "../model/layer.js";
@@ -456,4 +456,29 @@ export const getElementAtIndexed = (
     }
   }
   return best;
+};
+
+/**
+ * Every `FileId` the scene's elements still point at. The binary registry
+ * is shared — several shapes may reference one entry — so a file is only
+ * unused when NO element references it.
+ */
+export const referencedFileIds = (scene: Scene): ReadonlySet<FileId> => {
+  const out = new Set<FileId>();
+  for (const el of scene.elements.values()) {
+    const id = (el as { readonly fileId?: FileId }).fileId;
+    if (id !== undefined) out.add(id);
+  }
+  return out;
+};
+
+/**
+ * File entries no element references any more — the bytes a host can drop
+ * from its store. Deleting a shape leaves its file behind on purpose (undo
+ * must be able to bring the pixels back), so callers pair this with an
+ * undoable patch or run it when history no longer reaches the file.
+ */
+export const unreferencedFileIds = (scene: Scene): readonly FileId[] => {
+  const used = referencedFileIds(scene);
+  return [...scene.files.keys()].filter((id) => !used.has(id));
 };

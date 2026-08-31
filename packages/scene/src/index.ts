@@ -244,6 +244,8 @@ export {
   getDescendantsOf,
   isElementLocked,
   isElementHidden,
+  referencedFileIds,
+  unreferencedFileIds,
 } from "./query/queries.js";
 
 // Spatial index (the class itself, for advanced uses)
