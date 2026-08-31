@@ -1,12 +1,14 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
   type ComponentType,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowUpRight,
   Circle,
@@ -34,7 +36,12 @@ import { useEditorSelector } from "../core/context.js";
 import type { DrawShapeKind, LinkDrawPreset } from "@oh-just-another/state";
 import { useActiveTool, useDiagramOptional, useHistory, useReadOnly } from "../core/hooks.js";
 import { Tooltip } from "../primitives/tooltip.js";
-import { CONTROL_ICON, ROW_ICON } from "../core/constants.js";
+import {
+  CONTROL_ICON,
+  ROW_ICON,
+  FLYOUT_GAP_PX,
+  FLYOUT_VIEWPORT_INSET_PX,
+} from "../core/constants.js";
 
 /** Toolbar buttons are 40-px controls — their glyphs use `CONTROL_ICON`. */
 const iconProps = CONTROL_ICON;
@@ -181,6 +188,37 @@ const ShapesAndLinesButton = ({
   const linkDrawPreset = useEditorSelector<LinkDrawPreset | null>((e) => e.linkDrawPreset, null);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  // Fixed-position coordinates for the flyout. Screen space (not the
+  // wrap's local space) so the menu escapes the dock, which becomes a
+  // scroll container on coarse-pointer layouts (`overflow-y: auto` also
+  // computes `overflow-x` to `auto`) and would clip an absolute child —
+  // on phones the flyout opened into the clipped area and never showed.
+  const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!open) {
+      setMenuPos(null);
+      return undefined;
+    }
+    const place = (): void => {
+      const wrap = ref.current;
+      const menu = menuRef.current;
+      if (!wrap || !menu) return;
+      const btn = wrap.getBoundingClientRect();
+      const inset = FLYOUT_VIEWPORT_INSET_PX;
+      const left = vertical ? btn.right + FLYOUT_GAP_PX : btn.left;
+      let top = vertical ? btn.top : btn.bottom + FLYOUT_GAP_PX;
+      // Clamp into the viewport: the menu is taller than a landscape phone.
+      const maxTop = window.innerHeight - inset - menu.offsetHeight;
+      top = Math.max(inset, Math.min(top, maxTop));
+      setMenuPos({ left, top });
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("resize", place);
+    };
+  }, [open, vertical]);
   const isRowActive = (row: (typeof SHAPES_FLYOUT_ROWS)[number]): boolean => {
     if (row.kind === "line") {
       // Stock `draw-edge` (hotkey L, no preset) draws the Elbow arrow defaults.
@@ -198,7 +236,9 @@ const ShapesAndLinesButton = ({
   useEffect(() => {
     if (!open) return undefined;
     const onDown = (ev: MouseEvent | PointerEvent): void => {
-      if (ref.current?.contains(ev.target as Node)) return;
+      const t = ev.target as Node;
+      // The flyout is portalled to <body>, so check both containers.
+      if (ref.current?.contains(t) || menuRef.current?.contains(t)) return;
       setOpen(false);
     };
     const onKey = (ev: KeyboardEvent): void => {
@@ -232,60 +272,75 @@ const ShapesAndLinesButton = ({
       >
         <Shapes {...iconProps} />
       </ToolbarButton>
-      {open ? (
-        <div
-          className="du-shapes-flyout"
-          role="menu"
-          aria-label="Shapes and lines"
-          style={vertical ? {} : { top: "calc(100% + var(--du-gap))", left: 0 }}
-        >
-          {SHAPES_FLYOUT_ROWS.map((row, i) => {
-            if (row.kind === "divider") return <hr key={i} className="du-shapes-flyout-divider" />;
-            const Icon = row.icon;
-            const active = isRowActive(row);
-            return (
-              <button
-                key={i}
-                type="button"
-                role="menuitemradio"
-                aria-checked={active}
-                className={`du-shapes-flyout-row${active ? " is-active" : ""}`}
-                aria-label={row.label}
-                onClick={() => {
-                  if (!editor) return;
-                  if (row.kind === "line") editor.armLineTool(row.preset);
-                  else editor.armShapeTool(row.shape);
-                  setOpen(false);
-                }}
-              >
-                <Icon {...ROW_ICON} />
-                <span>{row.label}</span>
-                {row.hotkey !== undefined ? (
-                  <span className="du-shapes-flyout-hotkey">{row.hotkey}</span>
-                ) : null}
-              </button>
-            );
-          })}
-          {onMoreShapes ? (
-            <>
-              <hr className="du-shapes-flyout-divider" />
-              <button
-                type="button"
-                role="menuitem"
-                className="du-shapes-flyout-row"
-                aria-label="More shapes"
-                onClick={() => {
-                  onMoreShapes();
-                  setOpen(false);
-                }}
-              >
-                <Shapes {...ROW_ICON} />
-                <span>More shapes</span>
-              </button>
-            </>
-          ) : null}
-        </div>
-      ) : null}
+      {open
+        ? // Portalled to <body>: the dock centres itself with a `translate`,
+          // and a transformed ancestor becomes the containing block for
+          // `position: fixed` — the menu would land offset by the dock's own
+          // position instead of at the button.
+          createPortal(
+            <div
+              ref={menuRef}
+              className="du-shapes-flyout"
+              role="menu"
+              aria-label="Shapes and lines"
+              style={
+                menuPos
+                  ? { position: "fixed", left: menuPos.left, top: menuPos.top }
+                  : // First paint (before the layout effect measures): keep the
+                    // menu renderable for the measurement but invisible.
+                    { visibility: "hidden" }
+              }
+            >
+              {SHAPES_FLYOUT_ROWS.map((row, i) => {
+                if (row.kind === "divider")
+                  return <hr key={i} className="du-shapes-flyout-divider" />;
+                const Icon = row.icon;
+                const active = isRowActive(row);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={active}
+                    className={`du-shapes-flyout-row${active ? " is-active" : ""}`}
+                    aria-label={row.label}
+                    onClick={() => {
+                      if (!editor) return;
+                      if (row.kind === "line") editor.armLineTool(row.preset);
+                      else editor.armShapeTool(row.shape);
+                      setOpen(false);
+                    }}
+                  >
+                    <Icon {...ROW_ICON} />
+                    <span>{row.label}</span>
+                    {row.hotkey !== undefined ? (
+                      <span className="du-shapes-flyout-hotkey">{row.hotkey}</span>
+                    ) : null}
+                  </button>
+                );
+              })}
+              {onMoreShapes ? (
+                <>
+                  <hr className="du-shapes-flyout-divider" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="du-shapes-flyout-row"
+                    aria-label="More shapes"
+                    onClick={() => {
+                      onMoreShapes();
+                      setOpen(false);
+                    }}
+                  >
+                    <Shapes {...ROW_ICON} />
+                    <span>More shapes</span>
+                  </button>
+                </>
+              ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 };

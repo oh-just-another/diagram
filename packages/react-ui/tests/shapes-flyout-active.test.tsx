@@ -66,17 +66,17 @@ describe("Shapes and lines flyout — active row", () => {
       act(() => {
         btnByLabel(container, "Shapes and lines")?.click();
       });
-      expect(checkedRows(container)).toEqual(["Rhombus"]);
-      expect(btnByLabel(container, "Rhombus")?.classList.contains("is-active")).toBe(true);
+      expect(checkedRows(document.body)).toEqual(["Rhombus"]);
+      expect(btnByLabel(document.body, "Rhombus")?.classList.contains("is-active")).toBe(true);
 
       act(() => {
-        btnByLabel(container, "Arrow")?.click();
+        btnByLabel(document.body, "Arrow")?.click();
       });
       expect(editor.linkDrawPreset).toBe("arrow");
       act(() => {
         btnByLabel(container, "Shapes and lines")?.click();
       });
-      expect(checkedRows(container)).toEqual(["Arrow"]);
+      expect(checkedRows(document.body)).toEqual(["Arrow"]);
     } finally {
       dispose();
     }
@@ -97,13 +97,34 @@ describe("Shapes and lines flyout — active row", () => {
       act(() => {
         btnByLabel(container, "Shapes and lines")?.click();
       });
-      expect(checkedRows(container)).toEqual(["Elbow arrow"]);
+      expect(checkedRows(document.body)).toEqual(["Elbow arrow"]);
       act(() => {
         editor.setActiveTool("select");
       });
-      expect(checkedRows(container)).toEqual([]);
+      expect(checkedRows(document.body)).toEqual([]);
     } finally {
       dispose();
     }
+  });
+});
+
+describe("flyout placement", () => {
+  it("opens position: fixed so the scrollable dock cannot clip it", () => {
+    const { editor, cleanup: dispose } = mountEditor();
+    const { container } = render(
+      <DiagramProvider editor={editor}>
+        <Toolbar items={DEFAULT_VERTICAL_TOOLBAR} orientation="vertical" />
+      </DiagramProvider>,
+    );
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[aria-label="Shapes and lines"]')!.click();
+    });
+    const menu = document.querySelector<HTMLElement>('[role=menu][aria-label="Shapes and lines"]')!;
+    expect(menu).not.toBeNull();
+    // The layout effect has run: the menu is placed (fixed), not left in
+    // its hidden pre-measure state.
+    expect(menu.style.position).toBe("fixed");
+    expect(menu.style.visibility).not.toBe("hidden");
+    dispose();
   });
 });

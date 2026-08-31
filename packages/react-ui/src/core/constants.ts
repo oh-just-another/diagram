@@ -351,3 +351,15 @@ export const MERGE_DIALOG_WIDTH_PX = 480;
 export const LINK_CAPTION_EDITOR_MAX_ROWS = 5;
 export const LINK_HOVER_POPUP_CLOSE_GRACE_MS = 220;
 export const STICKY_REACTION_MEASURE_FALLBACK_CHAR_WIDTH_FACTOR = 0.6;
+
+/**
+ * "Shapes and lines" flyout placement (screen px). The flyout is
+ * `position: fixed` so the scrollable creation dock cannot clip it:
+ * - `FLYOUT_GAP_PX` — gap between the button and the flyout (mirrors the
+ *   `--du-flyout-gap` token; the JS placement cannot read a CSS var
+ *   before paint). Range 6–16.
+ * - `FLYOUT_VIEWPORT_INSET_PX` — minimum distance to the viewport edges
+ *   when the flyout is clamped (short / landscape screens). Range 4–16.
+ */
+export const FLYOUT_GAP_PX = 10;
+export const FLYOUT_VIEWPORT_INSET_PX = 8;
