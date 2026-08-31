@@ -1,5 +1,15 @@
 # @oh-just-another/mcp
 
+## 0.2.15
+
+### Patch Changes
+
+- Updated dependencies [47221cc]
+  - @oh-just-another/scene@0.64.0
+  - @oh-just-another/headless@0.58.11
+  - @oh-just-another/importers@0.61.7
+  - @oh-just-another/serialization@0.61.4
+
 ## 0.2.14
 
 ### Patch Changes

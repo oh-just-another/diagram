@@ -1,5 +1,14 @@
 # @oh-just-another/headless
 
+## 0.58.11
+
+### Patch Changes
+
+- Updated dependencies [47221cc]
+  - @oh-just-another/scene@0.64.0
+  - @oh-just-another/renderer-svg@0.58.7
+  - @oh-just-another/serialization@0.61.4
+
 ## 0.58.10
 
 ### Patch Changes

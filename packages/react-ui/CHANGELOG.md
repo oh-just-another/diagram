@@ -1,5 +1,18 @@
 # @oh-just-another/react-ui
 
+## 0.64.7
+
+### Patch Changes
+
+- Updated dependencies [47221cc]
+  - @oh-just-another/scene@0.64.0
+  - @oh-just-another/state@0.69.0
+  - @oh-just-another/renderer-canvas@0.62.7
+  - @oh-just-another/renderer-core@0.62.3
+  - @oh-just-another/renderer-svg@0.58.7
+  - @oh-just-another/templates@0.59.4
+  - @oh-just-another/versioning@0.57.9
+
 ## 0.64.6
 
 ### Patch Changes
