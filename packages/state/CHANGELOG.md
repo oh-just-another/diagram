@@ -1,5 +1,18 @@
 # @oh-just-another/state
 
+## 0.69.0
+
+### Minor Changes
+
+- 47221cc: Binary files no longer outlive the shapes that reference them: deleting (or erasing / cutting) the last shape pointing at a file drops its `scene.files` entry in the same undoable step, so a host store mirroring `scene.files` stops growing with every removed image or video. Undo restores the entry with the shape, and the clipboard carries the bytes so a cut image still pastes. `referencedFileIds(scene)` / `unreferencedFileIds(scene)` are exported from `scene` for hosts that prune their own store.
+
+### Patch Changes
+
+- Updated dependencies [47221cc]
+  - @oh-just-another/scene@0.64.0
+  - @oh-just-another/history@0.57.9
+  - @oh-just-another/renderer-core@0.62.3
+
 ## 0.68.1
 
 ### Patch Changes

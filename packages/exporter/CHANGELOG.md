@@ -1,5 +1,14 @@
 # @oh-just-another/exporter
 
+## 0.57.13
+
+### Patch Changes
+
+- Updated dependencies [47221cc]
+  - @oh-just-another/scene@0.64.0
+  - @oh-just-another/headless@0.58.11
+  - @oh-just-another/serialization@0.61.4
+
 ## 0.57.12
 
 ### Patch Changes

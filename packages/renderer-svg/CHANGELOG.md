@@ -1,5 +1,13 @@
 # @oh-just-another/renderer-svg
 
+## 0.58.7
+
+### Patch Changes
+
+- Updated dependencies [47221cc]
+  - @oh-just-another/scene@0.64.0
+  - @oh-just-another/renderer-core@0.62.3
+
 ## 0.58.6
 
 ### Patch Changes
