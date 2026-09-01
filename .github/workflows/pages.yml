@@ -1,4 +1,4 @@
-name: Deploy docs to GitHub Pages
+name: Deploy docs + playground to GitHub Pages
 
 on:
   push:
@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build apps/docs
+    name: Build the site
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # A newer master push supersedes a queued docs build; only the deploy
@@ -39,6 +39,19 @@ jobs:
 
       - name: Build docs site
         run: pnpm docs:build
+
+      # The playground ships as a static sub-site of the same Pages deploy:
+      # built with its base pointing at /diagram/playground/ and copied into
+      # the docs build output. Collab stays offline there — the /relay dev
+      # proxy has no Pages counterpart; set VITE_RELAY_URL once a public
+      # relay exists.
+      - name: Build playground
+        run: pnpm --filter @oh-just-another/playground exec vite build --base=/diagram/playground/
+
+      - name: Merge playground into the site
+        run: |
+          mkdir -p apps/docs/build/playground
+          cp -R apps/playground/dist/. apps/docs/build/playground/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
