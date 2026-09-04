@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/diagram-svelte",
-  "version": "0.3.16",
+  "version": "0.3.17",
   "description": "Svelte 5 wrapper for the diagram editor — a thin <Diagram> component over the <oja-diagram> custom element.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
