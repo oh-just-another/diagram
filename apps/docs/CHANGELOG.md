@@ -1,5 +1,16 @@
 # @oh-just-another/docs
 
+## 0.0.21
+
+### Patch Changes
+
+- Updated dependencies [b107d38]
+  - @oh-just-another/react-ui@0.64.8
+  - @oh-just-another/diagram@0.3.16
+  - @oh-just-another/editor@0.66.3
+  - @oh-just-another/diagram-svelte@0.3.17
+  - @oh-just-another/diagram-vue@0.3.17
+
 ## 0.0.20
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @oh-just-another/editor
 
+## 0.66.3
+
+### Patch Changes
+
+- Updated dependencies [b107d38]
+  - @oh-just-another/react-ui@0.64.8
+
 ## 0.66.2
 
 ### Patch Changes
