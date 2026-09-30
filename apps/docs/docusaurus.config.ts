@@ -22,6 +22,11 @@ const config: Config = {
   projectName: "diagram",
   trailingSlash: false,
 
+  // Site analytics (GA4 + consent card), shared by every page of the domain;
+  // hosted by oh-just-another/site. It does nothing off ohjustanother.site,
+  // so local builds and dev servers aren't counted.
+  scripts: [{ src: "https://ohjustanother.site/analytics.js", defer: true }],
+
   onBrokenLinks: "throw",
   markdown: {
     hooks: {
@@ -170,6 +175,7 @@ const config: Config = {
           items: [
             { label: "GitHub", href: GITHUB_URL },
             { label: "npm", href: NPM_URL },
+            { label: "Privacy", href: "https://ohjustanother.site/privacy/" },
           ],
         },
       ],
